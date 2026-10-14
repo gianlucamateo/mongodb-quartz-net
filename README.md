@@ -47,10 +47,12 @@ var scheduler = await schedulerFactory.GetScheduler();
 
 Quartz's `UsePersistentStore<MongoDbJobStore>()` registers the job store in DI.
 When `IMongoDatabase` is registered, DI uses the new
-`MongoDbJobStore(IMongoDatabase database)` constructor. The supplied database
-determines the database name, and `ConnectionString` is ignored entirely, even
-if configured. The database and its underlying client remain owned by the
-application; the job store does not dispose them.
+`MongoDbJobStore(IMongoDatabase database)` constructor. The supplied database is
+only used when no `quartz.jobStore.connectionString` is configured; an explicitly
+configured connection string always takes precedence over the registered
+database. When used, the supplied database determines the database name. The
+database and its underlying client remain owned by the application; the job
+store does not dispose them.
 
 The optional collection prefix works as before: `"quartz"` produces collections
 such as `quartz.jobs` and `quartz.triggers`. Without a prefix, collection names

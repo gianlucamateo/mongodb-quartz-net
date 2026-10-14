@@ -44,11 +44,10 @@ namespace Quartz.Spi.MongoDbJobStore.Tests
         [Theory]
         [InlineData(null, null)]
         [InlineData(null, "quartz")]
-        [InlineData("not-a-mongodb-url", null)]
-        [InlineData("not-a-mongodb-url", "quartz")]
-        [InlineData("mongodb://127.0.0.1:1/ignored", null)]
-        [InlineData("mongodb://127.0.0.1:1/ignored", "quartz")]
-        public async Task SchedulerUsesInjectedDatabase(string connectionString, string collectionPrefix)
+        [InlineData("", null)]
+        [InlineData("", "quartz")]
+        public async Task SchedulerUsesInjectedDatabaseWithoutConnectionString(
+            string connectionString, string collectionPrefix)
         {
             var database = _mongoResource.CreateDatabase();
             using (var services = CreateServiceProvider(database, connectionString, collectionPrefix))
@@ -93,6 +92,37 @@ namespace Quartz.Spi.MongoDbJobStore.Tests
                 {
                     await StoreAndRetrieveJobAndTrigger(scheduler);
                     await AssertStoredDocuments(database, "quartz");
+                }
+                finally
+                {
+                    await scheduler.Shutdown();
+                }
+            }
+        }
+
+        [Fact]
+        public async Task ConfiguredConnectionStringTakesPrecedenceOverRegisteredDatabase()
+        {
+            var registeredDatabase = _mongoResource.CreateDatabase();
+            var configuredDatabase = _mongoResource.CreateDatabase();
+            var url = new MongoUrlBuilder(_mongoResource.ConnectionString)
+            {
+                DatabaseName = configuredDatabase.DatabaseNamespace.DatabaseName
+            };
+
+            using (var services = CreateServiceProvider(registeredDatabase, url.ToString(), "quartz"))
+            {
+                var scheduler = await services.GetRequiredService<ISchedulerFactory>().GetScheduler();
+                try
+                {
+                    await StoreAndRetrieveJobAndTrigger(scheduler);
+                    await AssertStoredDocuments(configuredDatabase, "quartz");
+
+                    var collections = await registeredDatabase.ListCollectionNamesAsync();
+                    using (collections)
+                    {
+                        (await collections.ToListAsync()).Should().BeEmpty();
+                    }
                 }
                 finally
                 {

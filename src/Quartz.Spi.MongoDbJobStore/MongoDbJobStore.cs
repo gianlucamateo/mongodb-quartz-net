@@ -56,7 +56,8 @@ namespace Quartz.Spi.MongoDbJobStore
         }
 
         /// <summary>
-        ///     Creates a job store using a preconfigured database instead of ConnectionString.
+        ///     Creates a job store using a preconfigured database when no ConnectionString is configured.
+        ///     An explicitly configured ConnectionString takes precedence.
         ///     The database and its client remain owned by the caller.
         /// </summary>
         public MongoDbJobStore(IMongoDatabase database) : this()
@@ -134,7 +135,7 @@ namespace Quartz.Spi.MongoDbJobStore
             _schedulerId = new SchedulerId(InstanceId, InstanceName);
             Log.Trace($"Scheduler {_schedulerId} initialize");
 
-            if (_providedDatabase != null)
+            if (string.IsNullOrEmpty(ConnectionString) && _providedDatabase != null)
             {
                 _database = _providedDatabase;
             }
